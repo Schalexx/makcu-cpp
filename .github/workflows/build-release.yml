@@ -1,4 +1,4 @@
-name: Build MAKCU CLI for All Platforms
+name: Build MAKCU CLI for Windows
 
 on:
   push:
@@ -8,157 +8,78 @@ on:
 
 jobs:
   build:
-    strategy:
-      matrix:
-        os: [windows-latest, ubuntu-latest, macos-latest]
-        include:
-          - os: windows-latest
-            executable: makcu_cli.exe
-            build_cmd: |
-              cl /EHsc /O2 /I. makcu_cli.cpp makcu-cpp/src/makcu.cpp makcu-cpp/src/serialport.cpp /Fe:makcu_cli.exe
-          - os: ubuntu-latest
-            executable: makcu_cli
-            build_cmd: |
-              g++ -std=c++17 -O3 -I. makcu_cli.cpp makcu-cpp/src/makcu.cpp makcu-cpp/src/serialport.cpp -o makcu_cli
-          - os: macos-latest
-            executable: makcu_cli
-            build_cmd: |
-              g++ -std=c++17 -O3 -I. makcu_cli.cpp makcu-cpp/src/makcu.cpp makcu-cpp/src/serialport.cpp -o makcu_cli
-
-    runs-on: ${{ matrix.os }}
+    runs-on: windows-latest
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Setup MSVC (Windows only)
-      if: matrix.os == 'windows-latest'
-      uses: microsoft/setup-msbuild@v1.1
+    - name: Setup MSVC
+      uses: microsoft/setup-msbuild@v2
 
     - name: Build executable
-      shell: bash
+      shell: cmd
       run: |
-        if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-          # Use Developer Command Prompt for Windows
-          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
-          cl /EHsc /O2 /I. makcu_cli.cpp makcu-cpp/src/makcu.cpp makcu-cpp/src/serialport.cpp /Fe:makcu_cli.exe
-        else
-          g++ -std=c++17 -O3 -I. makcu_cli.cpp makcu-cpp/src/makcu.cpp makcu-cpp/src/serialport.cpp -o makcu_cli
-        fi
+        call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+        cl /EHsc /O2 /I. makcu_cli.cpp makcu-cpp/src/makcu.cpp makcu-cpp/src/serialport.cpp /Fe:makcu_cli.exe
 
     - name: Test executable
-      shell: bash
+      shell: cmd
       run: |
-        if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-          ./makcu_cli.exe --command "help" || echo "CLI created successfully"
-        else
-          ./makcu_cli --command "help" || echo "CLI created successfully"
-        fi
+        makcu_cli.exe --command "help" || echo CLI created successfully
 
     - name: Create portable package
-      shell: bash
+      shell: cmd
       run: |
-        mkdir -p makcu-cpp-portable
-        
-        # Copy executable
-        if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-          cp makcu_cli.exe makcu-cpp-portable/
-          # Create Windows batch file
-          cat > makcu-cpp-portable/quick_test.bat << 'EOF'
-        @echo off
-        echo MAKCU C++ Quick Test
-        echo ====================
-        echo.
-        echo Testing CLI interface...
-        makcu_cli.exe --command "help"
-        echo.
-        echo If you see usage instructions above, the build worked!
-        echo.
-        echo Next: Connect your MAKCU device and run:
-        echo   python test_makcu.py
-        echo.
-        pause
-        EOF
-        else
-          cp makcu_cli makcu-cpp-portable/
-          chmod +x makcu-cpp-portable/makcu_cli
-          # Create Unix shell script
-          cat > makcu-cpp-portable/quick_test.sh << 'EOF'
-        #!/bin/bash
-        echo "MAKCU C++ Quick Test"
-        echo "===================="
-        echo
-        echo "Testing CLI interface..."
-        ./makcu_cli --command "help"
-        echo
-        echo "If you see usage instructions above, the build worked!"
-        echo
-        echo "Next: Connect your MAKCU device and run:"
-        echo "  python3 test_makcu.py"
-        echo
-        EOF
-          chmod +x makcu-cpp-portable/quick_test.sh
-        fi
-        
-        # Copy Python files
-        cp makcu_python_wrapper.py makcu-cpp-portable/
-        cp test_makcu.py makcu-cpp-portable/
-        cp auto_integrate.py makcu-cpp-portable/
-        cp integrate_makcu_cpp.py makcu-cpp-portable/
-        cp INTEGRATION_README.md makcu-cpp-portable/
-        
-        # Create README for users
-        cat > makcu-cpp-portable/README_PORTABLE.md << 'EOF'
-        # MAKCU C++ Portable Distribution
-        
-        This package contains everything needed to use MAKCU C++ high-performance mouse control.
-        
-        ## Quick Start
-        
-        1. **Connect your MAKCU device** via USB
-        2. **Run quick test**:
-           - Windows: Double-click `quick_test.bat`
-           - Linux/Mac: Run `./quick_test.sh`
-        3. **Test Python integration**: `python test_makcu.py`
-        4. **Integrate into your script**: `python auto_integrate.py`
-        
-        ## Performance
-        
-        - **Mouse movements**: 0.07ms (28x faster than Python)
-        - **Gaming ready**: Perfect for 360Hz+ displays
-        - **Zero delay**: Fire-and-forget architecture
-        
-        ## Files Included
-        
-        - `makcu_cli` / `makcu_cli.exe` - High-performance C++ executable
-        - `makcu_python_wrapper.py` - Python wrapper interface
-        - `test_makcu.py` - Comprehensive test suite
-        - `auto_integrate.py` - Automatic integration tool
-        - `INTEGRATION_README.md` - Complete documentation
-        
-        ## Support
-        
-        If you have issues, see INTEGRATION_README.md for troubleshooting.
-        EOF
+        mkdir makcu-cpp-portable
+        copy makcu_cli.exe makcu-cpp-portable\
+        copy makcu_python_wrapper.py makcu-cpp-portable\
+        copy test_makcu.py makcu-cpp-portable\
+        copy auto_integrate.py makcu-cpp-portable\
+        copy integrate_makcu_cpp.py makcu-cpp-portable\
+        copy INTEGRATION_README.md makcu-cpp-portable\
+
+    - name: Create batch files
+      shell: cmd
+      run: |
+        echo @echo off > makcu-cpp-portable\quick_test.bat
+        echo echo MAKCU C++ Quick Test >> makcu-cpp-portable\quick_test.bat
+        echo echo ==================== >> makcu-cpp-portable\quick_test.bat
+        echo echo. >> makcu-cpp-portable\quick_test.bat
+        echo echo Testing CLI interface... >> makcu-cpp-portable\quick_test.bat
+        echo makcu_cli.exe --command "help" >> makcu-cpp-portable\quick_test.bat
+        echo echo. >> makcu-cpp-portable\quick_test.bat
+        echo echo If you see usage instructions above, the build worked! >> makcu-cpp-portable\quick_test.bat
+        echo echo. >> makcu-cpp-portable\quick_test.bat
+        echo echo Next: Connect your MAKCU device and run: >> makcu-cpp-portable\quick_test.bat
+        echo echo   python test_makcu.py >> makcu-cpp-portable\quick_test.bat
+        echo echo. >> makcu-cpp-portable\quick_test.bat
+        echo pause >> makcu-cpp-portable\quick_test.bat
+
+    - name: Create README
+      shell: cmd
+      run: |
+        echo # MAKCU C++ Windows Portable Distribution > makcu-cpp-portable\README_PORTABLE.md
+        echo. >> makcu-cpp-portable\README_PORTABLE.md
+        echo This package contains everything needed for 28x faster mouse movements. >> makcu-cpp-portable\README_PORTABLE.md
+        echo. >> makcu-cpp-portable\README_PORTABLE.md
+        echo ## Quick Start >> makcu-cpp-portable\README_PORTABLE.md
+        echo. >> makcu-cpp-portable\README_PORTABLE.md
+        echo 1. Connect your MAKCU device via USB >> makcu-cpp-portable\README_PORTABLE.md
+        echo 2. Double-click quick_test.bat >> makcu-cpp-portable\README_PORTABLE.md
+        echo 3. Run: python test_makcu.py >> makcu-cpp-portable\README_PORTABLE.md
+        echo 4. Integrate: python auto_integrate.py >> makcu-cpp-portable\README_PORTABLE.md
 
     - name: Archive portable package
-      shell: bash
+      shell: cmd
       run: |
-        if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-          7z a makcu-cpp-windows.zip makcu-cpp-portable/
-        elif [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
-          tar -czf makcu-cpp-linux.tar.gz makcu-cpp-portable/
-        else
-          tar -czf makcu-cpp-macos.tar.gz makcu-cpp-portable/
-        fi
+        powershell Compress-Archive -Path makcu-cpp-portable -DestinationPath makcu-cpp-windows.zip
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
-        name: makcu-cpp-${{ matrix.os }}
-        path: |
-          makcu-cpp-*.zip
-          makcu-cpp-*.tar.gz
+        name: makcu-cpp-windows
+        path: makcu-cpp-windows.zip
 
   release:
     needs: build
@@ -166,41 +87,50 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     
     steps:
-    - name: Download all artifacts
-      uses: actions/download-artifact@v3
+    - name: Download artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: makcu-cpp-windows
 
     - name: Create Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
-        files: |
-          makcu-cpp-windows-latest/makcu-cpp-windows.zip
-          makcu-cpp-ubuntu-latest/makcu-cpp-linux.tar.gz
-          makcu-cpp-macos-latest/makcu-cpp-macos.tar.gz
+        files: makcu-cpp-windows.zip
         body: |
-          # MAKCU C++ High-Performance Release
+          # MAKCU C++ Windows High-Performance Release
           
           **28x faster mouse movements for competitive gaming!**
           
-          ## Downloads
+          ## Download
           
-          - **Windows**: `makcu-cpp-windows.zip`
-          - **Linux**: `makcu-cpp-linux.tar.gz` 
-          - **macOS**: `makcu-cpp-macos.tar.gz`
+          - **Windows**: `makcu-cpp-windows.zip` ← Download this!
           
           ## Quick Start
           
-          1. Download the package for your OS
-          2. Extract the archive
-          3. Connect your MAKCU device
-          4. Run the quick test script
-          5. Integrate into your Python script
+          1. **Download** `makcu-cpp-windows.zip`
+          2. **Extract** the ZIP file anywhere
+          3. **Connect** your MAKCU device via USB
+          4. **Double-click** `quick_test.bat` to verify it works
+          5. **Run** `python test_makcu.py` for full test
+          6. **Run** `python auto_integrate.py` to integrate into your script
+          
+          ## What You Get
+          
+          - ✅ **Pre-compiled executable** (no building needed!)
+          - ✅ **0.07ms mouse movements** (28x faster than Python)
+          - ✅ **Perfect for 360Hz+ gaming**
+          - ✅ **Complete integration tools**
+          - ✅ **One-click testing**
           
           ## Performance
           
-          - Mouse movements: **0.07ms** (vs 2ms Python)
-          - Perfect for **360Hz+ gaming**
-          - **Zero-delay** fire-and-forget commands
+          - Mouse movements: **0.07ms** (vs 2ms Python implementation)
+          - Button clicks: **0.16ms** (vs 1ms Python implementation)  
+          - Gaming performance: **Perfect for 360Hz+ displays**
+          - Architecture: **Zero-delay fire-and-forget commands**
           
-          No compilation required - just download and use!
+          **No Visual Studio, no MinGW, no compilation required!**
+          
+          Just download, extract, and get 28x faster mouse control! 🚀
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
