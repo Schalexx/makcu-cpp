@@ -23,10 +23,17 @@ jobs:
         call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
         cl /EHsc /O2 /std:c++17 /I. makcu_cli.cpp makcu-cpp/src/makcu.cpp makcu-cpp/src/serialport.cpp /Fe:makcu_cli.exe advapi32.lib
 
-    - name: Test executable
+    - name: Verify executable exists
       shell: cmd
       run: |
-        makcu_cli.exe --command "help" || echo CLI created successfully
+        echo Checking if executable was created...
+        if exist makcu_cli.exe (
+          echo ✅ makcu_cli.exe created successfully!
+          dir makcu_cli.exe
+        ) else (
+          echo ❌ makcu_cli.exe not found!
+          exit /b 1
+        )
 
     - name: Create portable package
       shell: cmd
