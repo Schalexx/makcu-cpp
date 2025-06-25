@@ -21,7 +21,7 @@ jobs:
       shell: cmd
       run: |
         call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
-        cl /EHsc /O2 /std:c++17 /I. makcu_cli.cpp makcu-cpp/src/makcu.cpp makcu-cpp/src/serialport.cpp /Fe:makcu_cli.exe
+        cl /EHsc /O2 /std:c++17 /I. makcu_cli.cpp makcu-cpp/src/makcu.cpp makcu-cpp/src/serialport.cpp /Fe:makcu_cli.exe advapi32.lib
 
     - name: Test executable
       shell: cmd
